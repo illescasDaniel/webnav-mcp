@@ -1,7 +1,7 @@
 [project]
 name = "webnav-mcp"
-version = "0.1.2"
-description = "MCP server exposing JS/HTML/CSS language-server features plus a workspace-wide CSS custom-property/selector index as MCP tools"
+version = "0.1.3"
+description = "DEPRECATED: use webnav-ts-mcp from npm instead. MCP server exposing JS/HTML/CSS language-server features plus a workspace-wide CSS custom-property/selector index as MCP tools"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

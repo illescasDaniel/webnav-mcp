@@ -690,3 +690,28 @@ def test_given_module_and_jsx_files_when_build_index_then_indexed(tmp_path):
 	idx = web_index.build_root_index(tmp_path, "web")
 	# then
 	assert {"#from-mjs", "#from-tsx"} <= set(idx.selector_hits)
+
+
+def test_given_unused_custom_property_when_diagnostics_for_file_then_warns_until_used(tmp_path):
+	# given
+	_write(tmp_path / "a.css", ":root { --unused: red; }\n")
+	# when
+	warnings = web_index.diagnostics_for_file(web_index.build_root_index(tmp_path, "static"), "a.css")
+	# then
+	assert warnings == ["1:1 [warning] --unused is declared but never used in static"]
+	# given a var() use, then a JS string use
+	_write(tmp_path / "a.css", ":root { --unused: red; }\na { color: var(--unused); }\n")
+	assert web_index.diagnostics_for_file(web_index.build_root_index(tmp_path, "static"), "a.css") == []
+	_write(tmp_path / "a.css", ":root { --unused: red; }\n")
+	_write(tmp_path / "a.js", 'el.style.getPropertyValue("--unused");\n')
+	assert web_index.diagnostics_for_file(web_index.build_root_index(tmp_path, "static"), "a.css") == []
+
+
+def test_given_public_stylesheet_when_diagnostics_for_file_then_only_undefined_vars_reported(tmp_path):
+	# given
+	_write(tmp_path / "tokens" / "a.css", ":root { --unused: red; }\n.orphan { color: var(--nope); }\n")
+	idx = web_index.build_root_index(tmp_path, "static")
+	# when
+	warnings = web_index.diagnostics_for_file(idx, "tokens/a.css", ("tokens",))
+	# then
+	assert warnings == ["2:1 [warning] var(--nope) is never defined in static"]

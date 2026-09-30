@@ -74,6 +74,11 @@ _raw_web_roots = os.environ.get("WEBNAV_MCP_ROOTS")
 # emitted JS is where a root's runtime class/id usages live.
 _raw_exclude = os.environ.get("WEBNAV_MCP_EXCLUDE", "")
 
+# Comma-separated workspace-relative files/directories of stylesheets that are
+# a public API (design tokens for other projects). `diagnostics` never reports
+# their custom properties or selectors as unused.
+_raw_public = os.environ.get("WEBNAV_MCP_PUBLIC", "")
+
 # Derived from the workspace root by `_derive_config` (called below and again
 # whenever the workspace switches).
 # A malformed WEBNAV_MCP_ROOTS must not crash the server at import (the host
@@ -84,10 +89,11 @@ WEB_ROOTS: list[tuple[str, Path]] | None = None
 GENERATED_PATHS: list[Path] = []
 # The same paths, workspace-relative, for labeling index hits as generated.
 _GENERATED_RELATIVE: tuple[str, ...] = ()
+_PUBLIC_RELATIVE: tuple[str, ...] = ()
 
 
 def _derive_config(root: Path) -> None:
-	global WEB_ROOTS, _WEB_ROOTS_ERROR, GENERATED_PATHS, _GENERATED_RELATIVE
+	global WEB_ROOTS, _WEB_ROOTS_ERROR, GENERATED_PATHS, _GENERATED_RELATIVE, _PUBLIC_RELATIVE
 	_WEB_ROOTS_ERROR = None
 	try:
 		WEB_ROOTS = web_index.parse_roots_env(_raw_web_roots, root) if _raw_web_roots else None
@@ -98,6 +104,12 @@ def _derive_config(root: Path) -> None:
 	_GENERATED_RELATIVE = tuple(
 		str(path.relative_to(root.resolve())).replace("\\", "/")
 		for path in GENERATED_PATHS
+		if path.is_relative_to(root.resolve())
+	)
+	public_paths = [(root / part.strip()).resolve() for part in _raw_public.split(",") if part.strip()]
+	_PUBLIC_RELATIVE = tuple(
+		str(path.relative_to(root.resolve())).replace("\\", "/")
+		for path in public_paths
 		if path.is_relative_to(root.resolve())
 	)
 
@@ -598,8 +610,10 @@ async def diagnostics(file_path: str, ctx: Context | None = None) -> str:
 
 	For `.css`/`.html` files, this also includes index-derived warnings the
 	single-file language server can't see: `var(--x)` used with no matching
-	declaration anywhere in the same indexed root, and CSS selectors
-	(`#id`/`.class`) with no HTML/JS reference in that root.
+	declaration anywhere in the same indexed root, custom properties declared
+	but never used, and CSS selectors (`#id`/`.class`) with no HTML/JS
+	reference in that root (files under `WEBNAV_MCP_PUBLIC` are exempt from
+	the last two).
 	"""
 	await _use_workspace(ctx)
 	try:
@@ -616,7 +630,7 @@ async def diagnostics(file_path: str, ctx: Context | None = None) -> str:
 			located = None
 		if located is not None:
 			idx, file_rel = located
-			extra = web_index.diagnostics_for_file(idx, file_rel)
+			extra = web_index.diagnostics_for_file(idx, file_rel, _PUBLIC_RELATIVE)
 			if extra:
 				lines.append("\n".join(extra))
 	combined = [text for text in lines if text and text != "No diagnostics."]

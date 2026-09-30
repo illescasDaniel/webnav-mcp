@@ -745,6 +745,17 @@ def undefined_var_usages(idx: RootIndex) -> list[VarUsage]:
 	]
 
 
+def unused_var_declarations(idx: RootIndex) -> list[VarDeclaration]:
+	"""Declared custom properties never read by any `var()` in the root. A JS/TS
+	string literal equal to the name (e.g. `getPropertyValue("--x")`) counts as a use."""
+	return [
+		decl
+		for name, decls in idx.var_declarations.items()
+		if name not in idx.var_usages and name not in idx.string_literals
+		for decl in decls
+	]
+
+
 def unreferenced_selectors(idx: RootIndex) -> list[str]:
 	"""CSS-defined tokens with no HTML/JS reference. A dynamically-built JS hit
 	elsewhere in the root (e.g. `getElementById("view-" + x)`, stored under
@@ -764,14 +775,21 @@ def unreferenced_selectors(idx: RootIndex) -> list[str]:
 	return sorted(unreferenced)
 
 
-def diagnostics_for_file(idx: RootIndex, file_rel: str) -> list[str]:
+def diagnostics_for_file(idx: RootIndex, file_rel: str, public_paths: tuple[str, ...] = ()) -> list[str]:
 	"""Index-derived warning lines for one file: undefined `var(--x)` usages
-	(no fallback) and CSS selectors with no HTML/JS reference in this root.
-	Dynamically-built JS selectors are skipped to avoid false positives."""
+	(no fallback), unused `--x` declarations and CSS selectors with no HTML/JS
+	reference in this root. Dynamically-built JS selectors are skipped to avoid
+	false positives. Files under `public_paths` (`WEBNAV_MCP_PUBLIC`) are an API
+	for other projects, so their declarations and selectors are never "unused"."""
 	warnings: list[str] = []
 	for usage in undefined_var_usages(idx):
 		if usage.file == file_rel:
 			warnings.append(f"{usage.line}:1 [warning] var({usage.name}) is never defined in {idx.name}")
+	if _is_generated(file_rel, public_paths):
+		return sorted(warnings, key=lambda w: int(w.split(":", 1)[0]))
+	for decl in unused_var_declarations(idx):
+		if decl.file == file_rel:
+			warnings.append(f"{decl.line}:1 [warning] {decl.name} is declared but never used in {idx.name}")
 	unreferenced = set(unreferenced_selectors(idx))
 	for token in unreferenced:
 		for hit in idx.selector_hits.get(token, []):

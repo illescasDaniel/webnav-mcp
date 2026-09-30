@@ -1,5 +1,11 @@
 # webnav-mcp
 
+> **⚠️ Deprecated — do not use this package.** Use
+> [`webnav-ts-mcp`](https://www.npmjs.com/package/webnav-ts-mcp) from the npm
+> registry instead (`claude mcp add webnav -- npx webnav-ts-mcp`). It is a
+> TypeScript port with the same tools and environment variables, needs only
+> Node.js (no Python or `uv`), and is the only version that will receive updates.
+
 An MCP server that gives AI agents JS/TS/HTML/CSS navigation, plus a
 cross-file index of CSS custom properties and `#id`/`.class` selectors that
 single-file language servers can't provide. It's the front-end counterpart to
@@ -103,6 +109,7 @@ tab counts as one character).
 | `WEBNAV_MCP_WORKSPACE` | unset: follows the client's MCP roots when they name a worktree of the same git repository, else `CLAUDE_PROJECT_DIR`, else the working directory | Pins the project root (never overridden). See the `workspace` tool |
 | `WEBNAV_MCP_ROOTS` | the whole workspace as one root, labelled `web` | Comma-separated `label=relative/path` pairs to index separately, e.g. `app=src,prototypes=design` when two trees define their own values |
 | `WEBNAV_MCP_EXCLUDE` | nothing | Comma-separated workspace-relative paths of generated script output (e.g. the JS a TS build emits). These aren't opened, are hidden from `search_symbol`, and are rejected by the position tools. The CSS/selector index still reads them |
+| `WEBNAV_MCP_PUBLIC` | nothing | Comma-separated workspace-relative stylesheets (files or directories) that are a public API, e.g. a design-token file consumed by other projects. `diagnostics` stops reporting their custom properties as "declared but never used" and their selectors as "never referenced"; undefined `var()` usages are still reported |
 
 ## Requirements
 
