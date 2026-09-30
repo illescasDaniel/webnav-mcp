@@ -1,0 +1,12 @@
+{
+	"name": "webnav-mcp-tooling",
+	"private": true,
+	"description": "Language-server binaries webnav owns for standalone launch (tsc LSP + HTML/CSS servers).",
+	"engines": {
+		"node": ">=18"
+	},
+	"dependencies": {
+		"typescript": "^7.0.2",
+		"vscode-langservers-extracted": "^4.10.0"
+	}
+}
