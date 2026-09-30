@@ -1,6 +1,6 @@
 [project]
 name = "webnav-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "MCP server exposing JS/HTML/CSS language-server features plus a workspace-wide CSS custom-property/selector index as MCP tools"
 readme = "README.md"
 requires-python = ">=3.11"

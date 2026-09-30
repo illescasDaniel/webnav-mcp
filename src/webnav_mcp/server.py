@@ -50,6 +50,7 @@ from mcp_nav_shared.workspace import WorkspaceSelector
 import webnav_mcp
 from webnav_mcp import web_index
 from webnav_mcp.lang_command import resolve_css_command, resolve_html_command, resolve_ts_command
+from webnav_mcp.outline_imports import drop_import_symbols
 
 
 # Which checkout/worktree to navigate is decided per request (see
@@ -583,6 +584,8 @@ async def outline(file_path: str, detailed: bool = False, ctx: Context | None = 
 		_check_script_file(file_path)
 		client = await _get_ts_client()
 		symbols = await client.document_symbol(file_path)
+		if not detailed:
+			symbols = drop_import_symbols(symbols, _resolve_path(file_path).read_text(encoding="utf-8"))
 	except TOOL_ERRORS as exc:
 		return format_tool_error(exc)
 	return format_outline(symbols, collapse_kinds=frozenset() if detailed else LOCALS_HOLDER_KINDS)

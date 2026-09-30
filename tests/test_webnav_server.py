@@ -464,3 +464,34 @@ def test_given_ts_client_when_built_then_config_change_restarts_and_reopens_proj
 	assert client.config_names == frozenset({"tsconfig.json", "jsconfig.json", "package.json"})
 	assert client.on_restart is server._open_project_files
 	assert client.on_notice == server._notices.post
+
+
+def test_given_imports_when_outline_then_hidden_unless_detailed(monkeypatch, tmp_path):
+	# given
+	(tmp_path / "a.ts").write_text('import { x } from "./x";\nexport const y = 1;\n', encoding="utf-8")
+	symbol = lambda name, line: {  # noqa: E731
+		"name": name,
+		"kind": 13,
+		"range": {"start": {"line": line, "character": 0}, "end": {"line": line, "character": 1}},
+		"selectionRange": {"start": {"line": line, "character": 0}, "end": {"line": line, "character": 1}},
+	}
+
+	class _Client:
+		async def document_symbol(self, _file_path):
+			return [symbol("x", 0), symbol("y", 1)]
+
+	async def _client() -> _Client:
+		return _Client()
+
+	async def _no_workspace(_ctx=None):
+		return None
+
+	monkeypatch.setattr(server, "_get_ts_client", _client)
+	monkeypatch.setattr(server, "_use_workspace", _no_workspace)
+	monkeypatch.setattr(server, "WORKSPACE_ROOT", tmp_path)
+	# when
+	default = asyncio.run(server.outline("a.ts"))
+	detailed = asyncio.run(server.outline("a.ts", detailed=True))
+	# then
+	assert default.splitlines() == ["y  [Variable]  :2"]
+	assert "x  [Variable]" in detailed
